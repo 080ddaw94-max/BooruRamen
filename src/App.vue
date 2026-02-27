@@ -12,143 +12,7 @@
     <div class="h-screen relative overflow-hidden">
     
       <!-- Post details sidebar -->
-      <div 
-        class="absolute top-0 left-0 w-80 h-full bg-transparent backdrop-blur-sm border-r border-gray-700 overflow-y-auto z-50 transition-transform duration-300 ease-in-out"
-        :style="{ transform: showPostDetails ? 'translateX(0)' : 'translateX(-100%)' }"
-      >
-        <div class="p-4" style="padding-top: calc(1rem + env(safe-area-inset-top, 0)); padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0));">
-          <h2 class="text-xl font-bold mb-4">Post Details</h2>
-          
-          <div class="space-y-4" v-if="currentPost">
-            <div>
-              <h3 class="text-sm font-medium text-gray-400">ID</h3>
-              <p>{{ currentPost.id }}</p>
-            </div>
-            
-            <div>
-              <h3 class="text-sm font-medium text-gray-400">Uploader</h3>
-              <p>{{ currentPost.uploader_name }}</p>
-            </div>
-            
-            <div>
-              <h3 class="text-sm font-medium text-gray-400">Rating</h3>
-              <p class="capitalize">{{ getRatingFromCode(currentPost.rating) }}</p>
-            </div>
-            
-            <div>
-              <h3 class="text-sm font-medium text-gray-400">Score</h3>
-              <p>{{ currentPost.score }}</p>
-            </div>
-            
-            <div>
-              <h3 class="text-sm font-medium text-gray-400">Media Info</h3>
-              <p>{{ currentPost.file_ext.toUpperCase() }} - {{ formatFileSize(currentPost.file_size) }}</p>
-              <p>{{ currentPost.image_width }}×{{ currentPost.image_height }}</p>
-            </div>
-            
-            <div>
-              <h3 class="text-sm font-medium text-gray-400">Tags</h3>
-              <div class="flex flex-wrap gap-1 mt-1">
-                <span 
-                  v-for="tag in currentPost.tag_string.split(' ')" 
-                  :key="tag"
-                  class="bg-gray-700 px-2 py-0.5 rounded text-xs"
-                >
-                  {{ tag }}
-                </span>
-              </div>
-            </div>
-            
-            <div v-if="currentPost.tag_string_artist">
-              <h3 class="text-sm font-medium text-gray-400">Artist Tags</h3>
-              <div class="flex flex-wrap gap-1 mt-1">
-                <span 
-                  v-for="tag in currentPost.tag_string_artist.split(' ')" 
-                  :key="tag"
-                  class="bg-pink-900 px-2 py-0.5 rounded text-xs"
-                >
-                  {{ tag }}
-                </span>
-              </div>
-            </div>
-            
-            <div v-if="currentPost.tag_string_character">
-              <h3 class="text-sm font-medium text-gray-400">Character Tags</h3>
-              <div class="flex flex-wrap gap-1 mt-1">
-                <span 
-                  v-for="tag in currentPost.tag_string_character.split(' ')" 
-                  :key="tag"
-                  class="bg-green-900 px-2 py-0.5 rounded text-xs"
-                >
-                  {{ tag }}
-                </span>
-              </div>
-            </div>
-            
-            <div v-if="currentPost.tag_string_copyright">
-              <h3 class="text-sm font-medium text-gray-400">Copyright Tags</h3>
-              <div class="flex flex-wrap gap-1 mt-1">
-                <span 
-                  v-for="tag in currentPost.tag_string_copyright.split(' ')" 
-                  :key="tag"
-                  class="bg-blue-900 px-2 py-0.5 rounded text-xs"
-                >
-                  {{ tag }}
-                </span>
-              </div>
-            </div>
-            
-            <div v-if="currentPost.tag_string_meta">
-              <h3 class="text-sm font-medium text-gray-400">Meta Tags</h3>
-              <div class="flex flex-wrap gap-1 mt-1">
-                <span 
-                  v-for="tag in currentPost.tag_string_meta.split(' ')" 
-                  :key="tag"
-                  class="bg-purple-900 px-2 py-0.5 rounded text-xs"
-                >
-                  {{ tag }}
-                </span>
-              </div>
-            </div>
-            
-            <div>
-              <h3 class="text-sm font-medium text-gray-400">Created</h3>
-              <p>{{ new Date(currentPost.created_at).toLocaleString() }}</p>
-            </div>
-            
-            <div>
-              <h3 class="text-sm font-medium text-gray-400">Source</h3>
-              <p class="text-pink-400">{{ getSourceName(currentPost.source) }}</p>
-            </div>
-            
-            <div class="flex justify-between items-center mt-4">
-              <a 
-                v-if="currentPost"
-                :href="currentPost.post_url || `https://danbooru.donmai.us/posts/${currentPost.id}`" 
-                target="_blank" 
-                class="text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-gray-800"
-                title="Open in browser"
-              >
-                View in Browser
-              </a>
-              <button 
-                @click="copyPostLink(currentPost)"
-                class="relative text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-gray-800"
-                title="Copy link"
-              >
-                {{ linkCopied ? 'Copied!' : 'Copy Link' }}
-                <span 
-                  v-if="linkCopied" 
-                  class="absolute top-0 right-0 bottom-0 left-0 bg-green-600 rounded-full flex items-center justify-center text-white"
-                  style="animation: fadeOut 1.5s forwards;"
-                >
-                  Copied!
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PostDetailsSidebar :show="showPostDetails" :post="currentPost" />
       
       <button 
         v-if="currentPost"
@@ -305,274 +169,7 @@
       </div>
 
       <!-- Settings sidebar -->
-      <div 
-        class="absolute top-0 right-0 w-80 h-full bg-transparent backdrop-blur-sm border-l border-gray-700 overflow-y-auto z-50 transition-transform duration-300 ease-in-out"
-        :style="{ transform: showSettingsSidebar ? 'translateX(0)' : 'translateX(100%)' }"
-      >
-      <div class="p-4" style="padding-top: calc(1rem + env(safe-area-inset-top, 0)); padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0));">
-          <h2 class="text-xl font-bold mb-4">Settings</h2>
-          
-          
-          <!-- Auto-scroll toggle -->
-          <div class="mb-4">
-            <div class="flex items-center justify-between">
-              <label class="text-sm font-medium">Auto-scroll</label>
-              <button 
-                @click="autoScroll = !autoScroll" 
-                class="relative inline-flex h-6 w-11 items-center rounded-full"
-                :class="autoScroll ? 'bg-pink-600' : 'bg-gray-600'"
-              >
-                <span 
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition"
-                  :class="autoScroll ? 'translate-x-6' : 'translate-x-1'"
-                ></span>
-              </button>
-            </div>
-            <div class="mt-2">
-              <label class="text-sm text-gray-400 block mb-1">Seconds between scrolls</label>
-              <input 
-                v-model.number="autoScrollSeconds" 
-                type="number" 
-                min="1" 
-                max="60"
-                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-pink-600"
-              />
-            </div>
-          </div>
-
-          <!-- Disable scroll animation toggle -->
-          <div class="mb-4">
-            <div class="flex items-center justify-between">
-              <label class="text-sm font-medium">Disable auto-scroll animation</label>
-              <button 
-                @click="disableScrollAnimation = !disableScrollAnimation" 
-                class="relative inline-flex h-6 w-11 items-center rounded-full"
-                :class="disableScrollAnimation ? 'bg-pink-600' : 'bg-gray-600'"
-              >
-                <span 
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition"
-                  :class="disableScrollAnimation ? 'translate-x-6' : 'translate-x-1'"
-                ></span>
-              </button>
-            </div>
-          </div>
-          
-          <!-- Autoplay videos toggle -->
-          <div class="mb-4">
-            <div class="flex items-center justify-between">
-              <label class="text-sm font-medium">Autoplay Videos</label>
-              <button 
-                @click="autoplayVideos = !autoplayVideos" 
-                class="relative inline-flex h-6 w-11 items-center rounded-full"
-                :class="autoplayVideos ? 'bg-pink-600' : 'bg-gray-600'"
-              >
-                <span 
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition"
-                  :class="autoplayVideos ? 'translate-x-6' : 'translate-x-1'"
-                ></span>
-              </button>
-            </div>
-          </div>
-          
-          <!-- Default muted toggle -->
-          <div class="mb-4">
-            <div class="flex items-center justify-between">
-              <label class="text-sm font-medium">Start Videos Muted</label>
-              <button 
-                @click="defaultMuted = !defaultMuted; savePlayerPreferences()" 
-                class="relative inline-flex h-6 w-11 items-center rounded-full"
-                :class="defaultMuted ? 'bg-pink-600' : 'bg-gray-600'"
-              >
-                <span 
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition"
-                  :class="defaultMuted ? 'translate-x-6' : 'translate-x-1'"
-                ></span>
-              </button>
-            </div>
-          </div>
-          
-          <!-- Media type selection -->
-          <div class="mb-4">
-            <label class="text-sm font-medium block mb-2">Media Type</label>
-            <div class="space-y-2">
-              <div class="flex items-center justify-between">
-                <label class="text-sm">Images</label>
-                <button 
-                  @click="mediaType.images = !mediaType.images" 
-                  class="relative inline-flex h-6 w-11 items-center rounded-full"
-                  :class="mediaType.images ? 'bg-pink-600' : 'bg-gray-600'"
-                >
-                  <span 
-                    class="inline-block h-4 w-4 transform rounded-full bg-white transition"
-                    :class="mediaType.images ? 'translate-x-6' : 'translate-x-1'"
-                  ></span>
-                </button>
-              </div>
-              <div class="flex items-center justify-between">
-                <label class="text-sm">Videos</label>
-                <button 
-                  @click="mediaType.videos = !mediaType.videos" 
-                  class="relative inline-flex h-6 w-11 items-center rounded-full"
-                  :class="mediaType.videos ? 'bg-pink-600' : 'bg-gray-600'"
-                >
-                  <span 
-                    class="inline-block h-4 w-4 transform rounded-full bg-white transition"
-                    :class="mediaType.videos ? 'translate-x-6' : 'translate-x-1'"
-                  ></span>
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Rating selection -->
-          <div class="mb-4">
-            <label class="text-sm font-medium block mb-2">Rating</label>
-            <div class="space-y-2">
-              <div v-for="rating in ['general', 'sensitive', 'questionable', 'explicit']" :key="rating" class="flex items-center justify-between">
-                <label class="text-sm capitalize">{{ rating }}</label>
-                <button 
-                  @click="toggleRating(rating)" 
-                  class="relative inline-flex h-6 w-11 items-center rounded-full"
-                  :class="ratings.includes(rating) ? 'bg-pink-600' : 'bg-gray-600'"
-                >
-                  <span 
-                    class="inline-block h-4 w-4 transform rounded-full bg-white transition"
-                    :class="ratings.includes(rating) ? 'translate-x-6' : 'translate-x-1'"
-                  ></span>
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Tag management -->
-          <div class="mb-4">
-            <label class="text-sm font-medium block mb-2">Whitelist Tags</label>
-            <div class="flex mb-2">
-              <input 
-                v-model="newWhitelistTag" 
-                @keyup.enter="addWhitelistTag"
-                type="text" 
-                placeholder="Add tag..." 
-                class="flex-1 bg-gray-700 border border-gray-600 rounded-l px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-pink-600"
-              />
-              <button 
-                @click="addWhitelistTag" 
-                class="bg-pink-600 px-3 py-1.5 rounded-r text-sm"
-              >
-                Add
-              </button>
-            </div>
-            <div class="flex flex-wrap gap-2 mt-2">
-              <div 
-                v-for="(tag, index) in whitelistTags" 
-                :key="index"
-                class="bg-gray-700 px-2 py-1 rounded text-xs flex items-center"
-              >
-                {{ tag }}
-                <button @click="removeWhitelistTag(index)" class="ml-1.5 text-gray-400 hover:text-white">
-                  <X class="h-3 w-3" />
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <div class="mb-4">
-            <label class="text-sm font-medium block mb-2">Blacklist Tags</label>
-            <div class="flex mb-2">
-              <input 
-                v-model="newBlacklistTag" 
-                @keyup.enter="addBlacklistTag"
-                type="text" 
-                placeholder="Add tag..." 
-                class="flex-1 bg-gray-700 border border-gray-600 rounded-l px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-pink-600"
-              />
-              <button 
-                @click="addBlacklistTag" 
-                class="bg-pink-600 px-3 py-1.5 rounded-r text-sm"
-              >
-                Add
-              </button>
-            </div>
-            <div class="flex flex-wrap gap-2 mt-2">
-              <div 
-                v-for="(tag, index) in blacklistTags" 
-                :key="index"
-                class="bg-gray-700 px-2 py-1 rounded text-xs flex items-center"
-              >
-                {{ tag }}
-                <button @click="removeBlacklistTag(index)" class="ml-1.5 text-gray-400 hover:text-white">
-                  <X class="h-3 w-3" />
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Recommendations section - Added from recommendation-ui.html -->
-          <div class="mb-4 border-t border-gray-700 pt-4">
-            <h3 class="text-sm font-medium block mb-2">Recommendations</h3>
-            
-            <!-- Explore Mode Toggle -->
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-sm">Explore Mode</label>
-              <button 
-                @click="toggleExploreMode" 
-                class="relative inline-flex h-6 w-11 items-center rounded-full"
-                :class="exploreMode ? 'bg-pink-600' : 'bg-gray-600'"
-              >
-                <span 
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition"
-                  :class="exploreMode ? 'translate-x-6' : 'translate-x-1'"
-                ></span>
-              </button>
-            </div>
-            <p class="text-xs text-gray-400 mb-3">Explore mode shows more diverse content to help improve recommendations</p>
-            
-            <!-- Recommended Tags Section -->
-            <div v-if="hasRecommendations" class="mb-3">
-              <h4 class="text-xs font-medium text-gray-400 mb-1">Recommended Tags</h4>
-              <div class="flex flex-wrap gap-1">
-                <span 
-                  v-for="tag in recommendedTags" 
-                  :key="tag"
-                  class="bg-pink-800 px-2 py-0.5 rounded text-xs inline-flex items-center"
-                >
-                  {{ tag }}
-                  <button 
-                    @click="whitelistTags.push(tag); newWhitelistTag = ''" 
-                    class="ml-1 text-xs hover:text-white"
-                  >
-                    + Add
-                  </button>
-                </span>
-              </div>
-              <p v-if="recommendedTags.length === 0" class="text-xs text-gray-400">
-                Interact with more posts to get recommendations
-              </p>
-            </div>
-            
-            <!-- Recommendation Status -->
-            <div class="text-xs text-gray-400 mb-2">
-              <p v-if="hasRecommendations">Recommendations active</p>
-              <p v-else>Recommendations will activate after more interactions</p>
-            </div>
-            
-            <!-- Reset Recommendations Button -->
-            <button 
-              @click="recommendationSystem.updateUserProfile(); posts = []; settings_page = 1; fetchPosts()" 
-              class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 rounded-md text-xs"
-            >
-              Reset Recommendations
-            </button>
-          </div>
-          
-          <button 
-            @click="applySettings" 
-            class="w-full bg-pink-600 hover:bg-pink-700 text-white py-2 rounded-md mt-4"
-          >
-            Apply Settings
-          </button>
-        </div>
-      </div>
+      <SettingsSidebar :show="showSettingsSidebar" :hasRecommendations="hasRecommendations" :recommendedTags="recommendedTags" @reset-recommendations="handleResetRecommendations" @apply-settings="applySettings" @save-player-preferences="savePlayerPreferences" />
       
       <!-- Floating toggle button for settings sidebar -->
       <button 
@@ -648,6 +245,8 @@ import recommendationSystem from './services/RecommendationSystem.js';
 
 import BottomNavBar from './components/BottomNavBar.vue';
 import CommentsSheet from './components/CommentsSheet.vue';
+import PostDetailsSidebar from './components/PostDetailsSidebar.vue';
+import SettingsSidebar from './components/SettingsSidebar.vue';
 
 export default {
   name: 'App',
@@ -660,6 +259,8 @@ export default {
     MessageCircle,
     BottomNavBar,
     CommentsSheet,
+    PostDetailsSidebar,
+    SettingsSidebar,
   },
   data() {
     return {
@@ -873,6 +474,13 @@ export default {
         if (!this.currentPost) return;
         // Calculate score breakdown using the recommendation system
         this.debugDetails = this.recommendationSystem.getPostScoreDetails(this.currentPost);
+    },
+    
+    async handleResetRecommendations() {
+      await this.recommendationSystem.resetRecommendations();
+      this.hasRecommendations = false;
+      this.recommendedTags = [];
+      window.location.reload();
     },
     
     startWatchTimeTracking() {
