@@ -22,15 +22,19 @@
         </div>
       </div>
 
+      <!-- Top spacer for virtual scrolling -->
+      <div v-if="visibleStartIndex > 0" class="w-full shrink-0 pointer-events-none" :style="[{ height: topSpacerHeight }, spacerTransitionStyle]"></div>
+
       <div
-        v-for="(post, index) in posts"
+        v-for="(post, visibleIdx) in visiblePosts"
         :key="getCompositeKey(post)"
-        class="w-full snap-start snap-always flex justify-center relative"
+        class="w-full snap-start snap-always flex justify-center relative shrink-0"
         :class="commentsSheetHeight > 0 ? 'items-end' : 'items-center'"
         :style="postContainerStyle"
+        v-observe-visibility
       >
-        <!-- Post media (Lazy rendered window for performance) -->
-        <div v-if="shouldRenderMedia(index)" class="relative max-h-full max-w-full">
+        <!-- Post media -->
+        <div class="relative max-h-full max-w-full">
           <img
             v-if="['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(getFileExtension(post))"
             :src="post.file_url"
@@ -51,7 +55,7 @@
             muted
             class="max-w-full transition-[max-height] duration-300"
             :style="{ maxHeight: mediaMaxHeight }"
-            :preload="index === currentPostIndex || index === currentPostIndex + 1 ? 'auto' : 'metadata'"
+            :preload="(visibleStartIndex + visibleIdx) === currentPostIndex || (visibleStartIndex + visibleIdx) === currentPostIndex + 1 ? 'auto' : 'metadata'"
             @click="togglePlayPause"
             @play="onVideoPlay($event, post)"
             @pause="onVideoPause($event, post)"
@@ -62,7 +66,7 @@
             @playing="onVideoPlaying(post)"
             @canplay="onVideoCanPlay(post)"
             @error="onVideoError(post)"
-          </video>
+          ></video>
           <div 
             v-else
             class="flex items-center justify-center bg-gray-900 p-4 rounded"
@@ -79,6 +83,9 @@
           </div>
         </div>
       </div>
+      
+      <!-- Bottom spacer for virtual scrolling -->
+      <div v-if="bottomSpacerHeight !== '0px'" class="w-full shrink-0 pointer-events-none" :style="[{ height: bottomSpacerHeight }, spacerTransitionStyle]"></div>
       
       <!-- Pagination loading spinner -->
       <div v-if="isFetching && !loading" class="h-full w-full snap-start flex items-center justify-center relative">
@@ -129,12 +136,41 @@ export default {
       videoElements: {}, 
       hasMorePosts: true,
       isProgrammaticVolumeChange: false, // Flag to ignore volumechange events during programmatic updates
+      isResizing: false, // Flag to suspend scroll tracking during CSS animation
       videoLoadingStates: {}, // Map of composite key -> loading boolean
       videoLoadingTimeouts: {}, // Non-reactive timers for debouncing spinner
     }
   },
+  directives: {
+    observeVisibility: {
+      mounted(el, binding, vnode) {
+        // Small timeout to ensure DOM is ready and component context is available
+        setTimeout(() => {
+          // In Vue 3, context is not directly on vnode, we access component instance via binding.instance
+          const vm = binding.instance;
+          if (vm && vm.observer) {
+            vm.observer.observe(el);
+          }
+        }, 0);
+      },
+      beforeUnmount(el, binding, vnode) {
+        const vm = binding.instance;
+        if (vm && vm.observer) {
+          vm.observer.unobserve(el);
+        }
+        
+        // Cleanup: forcefully pause any video when it unmounts from virtual DOM 
+        // preventing off-screen playing.
+        const video = el.querySelector('video');
+        if (video) {
+          video.pause();
+          video.muted = true;
+        }
+      }
+    }
+  },
   computed: {
-    ...mapState(useSettingsStore, ['autoScroll', 'autoScrollSeconds', 'disableScrollAnimation', 'debugMode', 'whitelistTags', 'blacklistTags']),
+    ...mapState(useSettingsStore, ['autoScroll', 'autoScrollSeconds', 'disableScrollAnimation', 'autoplayVideos', 'debugMode', 'whitelistTags', 'blacklistTags']),
     ...mapState(usePlayerStore, ['volume', 'muted', 'defaultMuted']),
 
     // Calculate max height for media based on comments sheet
@@ -166,12 +202,43 @@ export default {
         transition: 'height 0.35s cubic-bezier(0.32, 0.72, 0, 1)'
       };
     },
-
+    spacerTransitionStyle() {
+      return {
+        transition: this.isResizing ? 'height 0.35s cubic-bezier(0.32, 0.72, 0, 1)' : 'none'
+      };
+    },
     // Alias to match template if needed, or just updated template to use 'muted'
     // The template uses 'isMuted' prop, so we alias it or change template.
     // Let's alias it for minimal template changes.
     isMuted() {
         return this.muted;
+    },
+
+    // --- Virtual Scrolling Computed Properties ---
+    visibleStartIndex() {
+      return Math.max(0, this.currentPostIndex - 2);
+    },
+    visibleEndIndex() {
+      return Math.min(this.posts.length - 1, this.currentPostIndex + 2);
+    },
+    visiblePosts() {
+      if (!this.posts.length) return [];
+      return this.posts.slice(this.visibleStartIndex, this.visibleEndIndex + 1);
+    },
+    topSpacerHeight() {
+      if (this.visibleStartIndex === 0) return '0px';
+      const perPostHeight = this.commentsSheetHeight > 0 
+        ? `100vh - 4rem - ${this.commentsSheetHeight}px` 
+        : `100vh - 4rem`;
+      return `calc((${perPostHeight}) * ${this.visibleStartIndex})`;
+    },
+    bottomSpacerHeight() {
+      const remainingPosts = Math.max(0, this.posts.length - 1 - this.visibleEndIndex);
+      if (remainingPosts === 0) return '0px';
+      const perPostHeight = this.commentsSheetHeight > 0 
+        ? `100vh - 4rem - ${this.commentsSheetHeight}px` 
+        : `100vh - 4rem`;
+      return `calc((${perPostHeight}) * ${remainingPosts})`;
     }
   },
   // beforeUpdate removed to prevent clearing refs and causing infinite loops/resetting state
@@ -185,11 +252,6 @@ export default {
     getCompositeKey(post) {
       if (!post) return '';
       return post.source ? `${post.source}|${post.id}` : String(post.id);
-    },
-    shouldRenderMedia(index) {
-      // Show media only for current and nearby posts to save memory/CPU
-      const range = 2; // Render 2 posts ahead and 1 behind
-      return index >= this.currentPostIndex - 1 && index <= this.currentPostIndex + range;
     },
     getVideoSrc(post) {
       if (!post || !post.file_url) return '';
@@ -426,6 +488,7 @@ export default {
       }
     },
     handleScroll() {
+      if (this.isResizing) return;
       this.determineCurrentPost();
       const container = this.$refs.feedContainer;
       // Fetch more posts when we are 1 page away from the bottom (pre-fetching)
@@ -613,6 +676,7 @@ export default {
       (entries) => {
         entries.forEach(entry => {
           const video = entry.target.querySelector('video');
+          
           if (entry.isIntersecting) {
             if (video) {
               // Set flag to prevent volumechange event from overwriting store
@@ -636,15 +700,18 @@ export default {
               // Clear flag after a short delay to allow volumechange event to pass
               setTimeout(() => { this.isProgrammaticVolumeChange = false; }, 50);
               
-              video.play().catch(e => {
-                // If autoplay fails, try again with muted=true
-                if (e.name === 'NotAllowedError') {
-                  video.muted = true;
-                  video.play().catch(() => {}); // Silently fail if still blocked
-                  // Sync global state to reflect fallback to muted
-                  this.$emit('video-state-change', { muted: true });
-                }
-              });
+              // Only auto-play if setting is enabled!
+              if (this.autoplayVideos) {
+                video.play().catch(e => {
+                  // If autoplay fails, try again with muted=true
+                  if (e.name === 'NotAllowedError') {
+                    video.muted = true;
+                    video.play().catch(() => {}); // Silently fail if still blocked
+                    // Sync global state to reflect fallback to muted
+                    this.$emit('video-state-change', { muted: true });
+                  }
+                });
+              }
             }
           } else {
             if (video) {
@@ -706,6 +773,36 @@ export default {
         this.determineCurrentPost();
       });
     },
+    commentsSheetHeight(newHeight, oldHeight) {
+      if (!this.$refs.feedContainer) return;
+      
+      this.isResizing = true;
+      const container = this.$refs.feedContainer;
+      const targetIndex = this.currentPostIndex;
+      
+      const startTime = performance.now();
+      const duration = 350; // Map exactly to CSS transition timing
+      
+      const animateScroll = (time) => {
+        if (!this.$refs.feedContainer) return;
+        const elapsed = time - startTime;
+        
+        // Dynamically track the shrinking/growing height of the container
+        // to maintain pixel-perfect centering on the target post through the entire animation.
+        container.scrollTo({
+            top: targetIndex * container.clientHeight,
+            behavior: 'auto' // Instant adjustment, 60fps loop gives the illusion of smoothness
+        });
+
+        if (elapsed < duration + 50) { // pad by 50ms to ensure final tick settles cleanly
+          requestAnimationFrame(animateScroll);
+        } else {
+          this.isResizing = false;
+        }
+      };
+      
+      requestAnimationFrame(animateScroll);
+    }
   },
 }
 </script> 
