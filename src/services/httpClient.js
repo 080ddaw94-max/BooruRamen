@@ -57,6 +57,20 @@ export async function httpFetch(url, options = {}) {
     // Initialize Tauri fetch if not already done
     const tauriFetchFn = await initTauriFetch();
 
+    //lol lmao
+    if (url.includes('gelbooru.com')) {
+        if (tauriFetchFn) {
+            // Tauri: Set custom Referrer header
+            if (!options.headers) options.headers = {};
+            options.headers['Referer'] = 'https://gelbooru.com/';
+            console.log(`[httpFetch] Setting Referer header for Gelbooru in Tauri`);
+        } else {
+            // Browser: Use referrerPolicy to ensure partial Referrer
+            options.referrerPolicy = 'origin';
+            console.log(`[httpFetch] Setting referrerPolicy='origin' for Gelbooru in browser`);
+        }
+    }
+
     if (tauriFetchFn) {
         // Use Tauri's HTTP plugin fetch (bypasses CORS)
         return tauriFetchFn(url, options);
